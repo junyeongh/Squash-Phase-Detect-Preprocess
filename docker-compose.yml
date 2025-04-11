@@ -1,0 +1,51 @@
+services:
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+    environment:
+      - REACT_APP_API_URL=http://localhost:8000
+    networks:
+      - squash-net
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/opt/app:rw
+      - ./data:/data:rw
+      - model-checkpoints:/opt/app/checkpoints
+      - pip-cache:/root/.cache/pip
+    environment:
+      - ENVIRONMENT=development
+      - EXPORT_FOLDER=/data/exports
+      - GALLERY_FOLDER=/data/gallery
+      - THUMBNAILS_FOLDER=/data/thumbnails
+      - UPLOAD_FOLDER=/data/uploads
+      - WATCHFILES_FORCE_POLLING=true
+      - PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
+    command: ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    networks:
+      - squash-net
+
+networks:
+  squash-net:
+    driver: bridge
+
+volumes:
+  model-checkpoints:
+  pip-cache:
